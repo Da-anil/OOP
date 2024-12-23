@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "CustomExceptions.h"
+#include "File.h"
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -242,21 +243,24 @@ void Game::enemyAttack() {
 }
 
 void Game::save(std::string fileName) {
-    std::ofstream file(fileName);
-    if (!file.is_open()) {
-        file.close();
-        throw std::runtime_error("Failed to open file");
+    try {
+        FileOutput file = FileOutput(fileName);
+        *file.getStream() << gameState;
     }
-    file << gameState;
-    file.close();
+    catch (std::runtime_error& e) {
+        std::cout << e.what() << std::endl;
+    }
 }
 
 void Game::load(std::string fileName) {
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        file.close();
-        throw std::runtime_error("Failed to open file");
+    try {
+        FileInput file = FileInput(fileName);
+        *file.getStream() >> gameState;
     }
-    file >> gameState;
-    file.close();
+    catch (std::runtime_error& e) {
+        std::cout << e.what() << std::endl; 
+    }
+    catch (std::invalid_argument& e) {
+        std::cout << e.what() << std::endl;
+    }
 }
