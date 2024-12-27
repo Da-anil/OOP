@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <random>
 
 void Game::startGame() {
     gameState.roundCount = 1;
@@ -185,9 +186,9 @@ void Game::playerInitialize(int width, int height, std::vector<int> lengths) {
     std::cout << std::endl;
 
 
-    gameState.playerField = std::make_unique<GameField>(8, 8);
-    gameState.playerShips = std::make_unique<ShipManager>(lengths);
-    gameState.skillManager = std::make_unique<SkillManager>();
+    gameState.playerField = std::make_shared<GameField>(8, 8);
+    gameState.playerShips = std::make_shared<ShipManager>(lengths);
+    gameState.skillManager = std::make_shared<SkillManager>();
 
     int x, y, direction;
     int shipIndex = 0;
@@ -216,8 +217,8 @@ void Game::playerInitialize(int width, int height, std::vector<int> lengths) {
 
 void Game::enemyInitialize(int width, int height, std::vector<int> lengths) {
 
-    gameState.enemyField = std::make_unique<GameField>(width, height);
-    gameState.enemyShips = std::make_unique<ShipManager>(lengths);
+    gameState.enemyField = std::make_shared<GameField>(width, height);
+    gameState.enemyShips = std::make_shared<ShipManager>(lengths);
 
     std::shared_ptr<Ship> ship = gameState.enemyShips->getShip(0);
     gameState.enemyField->placeShip(*ship, 0, 0, Direction::horizontal);
@@ -235,8 +236,16 @@ void Game::softReset() {
 
 void Game::enemyAttack() {
     int x, y;
-    x = 0;
-    y = 0;
+
+    auto size = gameState.playerField->getSize();
+
+    std::random_device rd; 
+    std::mt19937 gen(rd()); 
+    std::uniform_int_distribution<> dis1(0, size.first - 1);
+    std::uniform_int_distribution<> dis2(0, size.second - 1); 
+    x = dis1(gen); 
+    y = dis2(gen);
+
     gameState.playerField->attackCell(x, y);
 
     std::cout << "Enemy attacked " << x << ", " << y << std::endl;

@@ -10,6 +10,9 @@ private:
     void playerAttack();
     void enemyAttack();
     void playerUseSkill();
+    void playerTurn(int x, int y, bool skillUsed = false, int skill_x = 0, int skill_y = 0);
+    void enemyTurn();
+
     bool updateEnemyShips();
     bool updatePlayerShips();
 

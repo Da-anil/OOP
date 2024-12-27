@@ -1,18 +1,17 @@
 #include "GameState.h"
 #include <iostream>
+#include <sstream>
 
-std::ostream& operator<<(std::ostream& os, const GameState& gameState) {
-    os << gameState.roundCount << std::endl;
-    std::pair<int, int> size = gameState.playerField->getSize();
-    os << size.first << " " << size.second << std::endl;
-
+std::string GameState::serializeField(std::shared_ptr<GameField> field) const {
+    std::stringstream os;
+    std::pair<int, int> size = field->getSize();
     int length = 0;
     int dx, dy;
     std::vector<std::vector<int>> segments;
     for (int i = 0; i < size.second; i++) {
         for (int j = 0; j < size.first; j++) {
 
-            switch (gameState.playerField->getCellState(j, i))
+            switch (field->getCellState(j, i))
             {
             case (CellState::empty):
                 os << "1 ";
@@ -28,21 +27,21 @@ std::ostream& operator<<(std::ostream& os, const GameState& gameState) {
                 break;
             }
 
-            if (!gameState.playerField->isCellEmpty(j, i)) {
-                if (!gameState.playerField->isCellEmpty(j - 1, i) || !gameState.playerField->isCellEmpty(j, i - 1)) {
+            if (!field->isCellEmpty(j, i)) {
+                if (!field->isCellEmpty(j - 1, i) || !field->isCellEmpty(j, i - 1)) {
                     continue;
                 }
                 segments.push_back({j, i});
                 length = 0;
-                dx = !gameState.playerField->isCellEmpty(j + 1, i) ? 1 : 0;
-                dy = !gameState.playerField->isCellEmpty(j, i + 1) ? 1 : 0;
+                dx = !field->isCellEmpty(j + 1, i) ? 1 : 0;
+                dy = !field->isCellEmpty(j, i + 1) ? 1 : 0;
 
                 if (dx == 0 && dy == 0) {
                     dx = 1;
                 }
 
-                while (!gameState.playerField->isCellEmpty(j + dx * length, i + dy * length)) {
-                    switch(gameState.playerField->getSegmentState(j + dx * length, i + dy * length)) {
+                while (!field->isCellEmpty(j + dx * length, i + dy * length)) {
+                    switch(field->getSegmentState(j + dx * length, i + dy * length)) {
                         case (SegmentState::destroyed):
                             segments.back().push_back(0);
                             break;
@@ -74,81 +73,33 @@ std::ostream& operator<<(std::ostream& os, const GameState& gameState) {
         os << std::endl;
     }
 
-    int count = gameState.skillManager->getSkillsCount();
+    return os.str();
+}
+
+std::string GameState::serializeSkills() const {
+    std::stringstream os;
+    int count = skillManager->getSkillsCount();
     os << count << " ";
 
     for (int i = 0; i < count; i++) {
-        os << gameState.skillManager->getSkillIndex(i) << " ";
+        os << skillManager->getSkillIndex(i) << " ";
     }
 
     os << std::endl;
 
-    segments.clear();
+    return os.str();
+}
 
-    for (int i = 0; i < size.second; i++) {
-        for (int j = 0; j < size.first; j++) {
+std::ostream& operator<<(std::ostream& os, const GameState& gameState) {
+    os << gameState.roundCount << std::endl;
+    std::pair<int, int> size = gameState.playerField->getSize();
+    os << size.first << " " << size.second << std::endl;
 
-            switch (gameState.enemyField->getCellState(j, i))
-            {
-            case (CellState::empty):
-                os << "1 ";
-                break;
-            case (CellState::ship):
-                os << "2 ";
-                break;
-            case (CellState::unknown):
-                os << "0 ";
-                break;
-            default:
-                os << "3 ";
-                break;
-            }
+    os << gameState.serializeField(gameState.playerField);
 
-            if (!gameState.enemyField->isCellEmpty(j, i)) {
-                if (!gameState.enemyField->isCellEmpty(j - 1, i) || !gameState.enemyField->isCellEmpty(j, i - 1)) {
-                    continue;
-                }
-                segments.push_back({j, i});
-                length = 0;
-                dx = !gameState.enemyField->isCellEmpty(j + 1, i) ? 1 : 0;
-                dy = !gameState.enemyField->isCellEmpty(j, i + 1) ? 1 : 0;
+    os << gameState.serializeSkills();
 
-                if (dx == 0 && dy == 0) {
-                    dx = 1;
-                }
-
-                while (!gameState.enemyField->isCellEmpty(j + dx * length, i + dy * length)) {
-                    switch(gameState.enemyField->getSegmentState(j + dx * length, i + dy * length)) {
-                        case (SegmentState::destroyed):
-                            segments.back().push_back(0);
-                            break;
-                        case (SegmentState::damaged):
-                            segments.back().push_back(1);
-                            break;
-                        case (SegmentState::intact):
-                            segments.back().push_back(2);
-                            break;
-                        default:
-                            break;
-                    }
-                    length++;
-                }
-
-                segments.back().push_back(dy);
-            }
-        }
-        os << std::endl;
-    }
-
-    os << segments.size() << std::endl;
-
-    for (int i = 0; i < segments.size(); i++) {
-        os << segments[i].size() - 3 << " ";
-        for (int j = 0; j < segments[i].size(); j++) {
-            os << segments[i][j] << " ";
-        }
-        os << std::endl;
-    }
+    os << gameState.serializeField(gameState.enemyField);
 
     return os;
 }
@@ -164,7 +115,7 @@ std::istream& operator>>(std::istream& is, GameState& gameState) {
     };
     newGameState.roundCount = roundCount;
 
-    newGameState.playerField = std::make_unique<GameField>(width, height);
+    newGameState.playerField = std::make_shared<GameField>(width, height);
     int cellState;
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -180,7 +131,7 @@ std::istream& operator>>(std::istream& is, GameState& gameState) {
         throw std::invalid_argument("Invalid player ship count");
     };
 
-    newGameState.playerShips = std::make_unique<ShipManager>();
+    newGameState.playerShips = std::make_shared<ShipManager>();
 
     std::pair<int, int> shipPosition;
     int shipLength;
@@ -216,7 +167,7 @@ std::istream& operator>>(std::istream& is, GameState& gameState) {
         throw std::invalid_argument("Invalid skill count");
     };
 
-    newGameState.skillManager = std::make_unique<SkillManager>();
+    newGameState.skillManager = std::make_shared<SkillManager>();
     newGameState.skillManager->clear();
 
     int skillIndex;
@@ -227,7 +178,7 @@ std::istream& operator>>(std::istream& is, GameState& gameState) {
         newGameState.skillManager->addSkill(skillIndex);
     }
 
-    newGameState.enemyField = std::make_unique<GameField>(width, height);
+    newGameState.enemyField = std::make_shared<GameField>(width, height);
 
     for (int i = 0; i < height; i++) {
         for (int j = 0; j < width; j++) {
@@ -242,23 +193,23 @@ std::istream& operator>>(std::istream& is, GameState& gameState) {
         throw std::invalid_argument("Invalid enemy ship count");
     };
 
-    newGameState.enemyShips = std::make_unique<ShipManager>();
+    newGameState.enemyShips = std::make_shared<ShipManager>();
 
     for (int i = 0; i < shipCount; i++) {
         if (!(is >> shipLength >> shipPosition.first >> shipPosition.second) || shipLength <= 0 || shipPosition.first < 0 || shipPosition.second < 0) {
-            throw std::invalid_argument("Invalid player ship input");
+            throw std::invalid_argument("Invalid enemy ship input");
         };
 
         try {
             newGameState.enemyShips->addShip(shipLength);
             for (int j = 0; j < shipLength; j++) {
                 if (!(is >> segmentState) || segmentState < 0 || segmentState > 2) {
-                    throw std::invalid_argument("Invalid player ship input");
+                    throw std::invalid_argument("Invalid enemy ship input");
                 }
                 newGameState.enemyShips->getShip(i)->setSegmentState(j, static_cast<SegmentState>(segmentState));
             }
             if (!(is >> shipDirection) || shipDirection < 0 || shipDirection > 1) {
-                throw std::invalid_argument("Invalid player ship input");
+                throw std::invalid_argument("Invalid enemy ship input");
             }
             newGameState.enemyField->placeShip(*newGameState.enemyShips->getShip(i), shipPosition.first, shipPosition.second, static_cast<Direction>(shipDirection));
         }
